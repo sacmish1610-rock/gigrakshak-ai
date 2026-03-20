@@ -5,13 +5,13 @@
 
 ## 📌 Problem Statement  
 
-Gig workers, especially food delivery partners (Zomato/Swiggy), face significant income loss due to external disruptions such as heavy rainfall, severe pollution, and social restrictions like curfews or strikes.
+Food delivery partners (Zomato/Swiggy) rely entirely on daily earnings. External disruptions such as heavy rain, pollution, and curfews can reduce their working hours and cause significant income loss.
 
-Since their earnings are directly dependent on completed deliveries, even short disruptions can lead to major financial instability.
+Currently, there is no system that automatically protects their income during such situations.
 
-GigRakshak AI solves this problem by providing an **AI-powered parametric insurance platform** that detects real income disruption and automatically compensates workers using intelligent multi-factor analysis.
+GigRakshak AI is an AI-powered parametric insurance platform designed to provide **real-time income protection**, automated payouts, and a seamless user experience.
 
-----
+---
 ## 👤 Persona-Based Scenario  
 
 ### Persona: Ramesh (Food Delivery Partner)
@@ -22,37 +22,36 @@ GigRakshak AI solves this problem by providing an **AI-powered parametric insura
 
 ### Scenario:
 
-- Heavy Rainfall = 90mm 🌧️  
-- AQI = 320 (Severe Pollution) 🌫️  
+- Rainfall = 90mm 🌧️  
+- AQI = 320 🌫️  
 - Curfew in locality 🚔  
-- Peak Dinner Time (7–10 PM) 🍽️  
 - Orders drop by 40% 📉  
 
 ### Outcome:
 
 - System detects disruption using hybrid model  
-- Income loss is validated using real-time signals  
-- ₹300 payout is automatically credited  
+- Income loss validated  
+- ₹300 payout automatically credited  
 
 ---
 ## 🔄 Application Workflow  
 
 1. User registers with basic details  
-2. AI performs risk profiling  
-3. Dynamic premium is calculated  
-4. User purchases weekly insurance plan  
+2. System fetches location-based risk (weather + pollution)  
+3. AI calculates risk score  
+4. Dynamic premium is generated  
+5. User selects weekly insurance plan  
 
-5. System continuously monitors:
+6. System continuously monitors:
    - Weather data  
    - Pollution levels  
    - Order activity (Mock API)  
-   - Social disruption signals  
-   - Time-based demand patterns  
+   - Social disruptions  
+   - Peak hour demand  
 
-6. Hybrid disruption model evaluates income loss  
-7. Fraud detection verifies authenticity  
-8. Automatic payout is triggered  
-9. User views updates on dashboard  
+7. Hybrid trigger detects income loss  
+8. Fraud detection validates claim  
+9. Automatic payout is processed (zero-touch)  
 
 ---
 ## 💸 Weekly Premium Model  
@@ -63,60 +62,53 @@ GigRakshak AI solves this problem by providing an **AI-powered parametric insura
 | Standard | ₹30 | ₹1000 |
 | Pro | ₹50 | ₹2000 |
 
-### 🔁 Dynamic Pricing  
+### 🔁 Dynamic Pricing (AI-Based)
 
+- Premium changes based on risk level  
 - High risk → Premium increases  
 - Low risk → Premium decreases  
 
----
-## ⚡ Disruption Model (Environmental + Social + Behavioral + Contextual)
-
-GigRakshak AI uses a **multi-factor disruption model** to ensure payouts are triggered only when actual income loss occurs.
-
----
-
-### 🌧️ 1. Environmental Disruptions  
-
-- Heavy Rainfall 🌧️  
-- Severe Pollution (AQI) 🌫️  
-- Extreme Heat (optional) 🔥  
-
-**Trigger Conditions:**
-
-Rainfall > 80mm  
-AQI > 300  
-Temperature > 42°C  
-
----
-
-### 🚫 2. Social Disruptions  
-
-- Curfew / Movement Restrictions 🚔  
-- Local Strikes / Protests 🪧  
-- Market / Zone Closures 🏪  
-
-**Trigger Condition:**
-
-SocialDisruption = TRUE  
-
----
-
-### 📉 3. Behavioral Indicator (Core Signal)  
-
-- Order Drop (Primary indicator of income loss)  
-
 Example:
-
-Normal Orders = 20  
-Current Orders = 10  
-→ Order Drop = 50%  
+“Premium increased by ₹5 due to high rain probability this week”
 
 ---
+## 🧠 AI Risk Scoring System  
 
-### ⏱️ 4. Contextual Factors (Innovation)  
+Risk is calculated using multiple real-world factors:
 
-- Peak Delivery Hours (Lunch/Dinner) 🍽️  
-- Location-based risk zones 📍  
+Risk Score =  
+( Rain × 0.3 ) +  
+( AQI × 0.2 ) +  
+( Order Drop × 0.4 ) +  
+( Peak Hours × 0.1 )  
+
+### 🎯 Output:
+
+- Low Risk (Green)  
+- Medium Risk (Yellow)  
+- High Risk (Red)  
+
+This provides a real AI-driven experience instead of rule-based logic.
+
+---
+## ⚡ Disruption Model  
+
+GigRakshak AI uses a multi-factor disruption system:
+
+### 🌧️ Environmental  
+- Heavy Rain  
+- Pollution  
+
+### 🚫 Social  
+- Curfew  
+- Strike  
+- Zone Closure  
+
+### 📉 Behavioral  
+- Order Drop (primary signal of income loss)  
+
+### ⏱️ Contextual  
+- Peak hours (lunch/dinner)  
 
 ---
 ## 🔥 Hybrid Parametric Trigger Logic  
@@ -130,28 +122,58 @@ OR (Order Drop > 50%)
 
 ### 💡 Key Insight  
 
-The system ensures payouts are triggered only when disruptions actually result in income loss, using order drop as the primary validation signal.
+Payout is triggered only when real income loss is detected.
 
 ---
-## 🤖 AI/ML Integration  
+## 💰 Zero-Touch Claim System  
 
-### 1. Risk Prediction  
-- Predicts disruption probability  
-- Estimates expected income loss  
+The system eliminates manual claim filing.
 
-### 2. Dynamic Pricing Engine  
-- Adjusts premium based on risk score  
+### Flow:
 
-### 3. Fraud Detection  
-- Detects:
-  - Fake location  
-  - Weather mismatch  
-  - Data inconsistency  
+- Disruption detected  
+- Claim automatically created  
+- Fraud check performed  
+- Payout processed instantly  
 
-### 4. AI Work Recommendation (Unique Feature)  
-- Suggests optimal working strategy  
-- Example:
-  “Avoid evening shift due to heavy rain risk”  
+### UX Message:
+
+“No action needed. Your earnings are protected.”
+
+---
+## 🛡️ Fraud Detection System  
+
+The system prevents misuse using:
+
+- Location validation  
+- Order activity verification  
+- Behavior pattern analysis  
+- Duplicate claim detection  
+
+### Fraud Score:
+
+- Low  
+- Medium  
+- High  
+
+This ensures system reliability and prevents false payouts.
+
+---
+## 📊 Dashboard  
+
+### 👨‍🍳 Worker Dashboard  
+
+- Today’s Earnings Protected  
+- Risk Level (Low / Medium / High)  
+- Active Insurance Plan  
+- Payout History  
+
+### 🧑‍💼 Admin Dashboard  
+
+- Total payouts  
+- Risk heatmap  
+- Active disruptions  
+- Fraud alerts  
 
 ---
 ## 🛠️ Tech Stack  
@@ -161,37 +183,29 @@ Backend: Node.js, Express.js
 Database: MongoDB  
 
 APIs:  
-- OpenWeather API  
+- Weather API  
 - AQI API  
 - Mock Order API  
-- Mock Social Disruption API  
+- Mock Social API  
 
 ---
-## 🧪 Development Plan  
-
-Phase 1: Ideation + README  
-Phase 2: Backend + trigger system  
-Phase 3: AI + dashboard + payout system  
-
----
-
 ## 🎯 Key Features  
 
-- AI Income Loss Prediction  
-- Dynamic Premium Pricing  
-- Hybrid Multi-Factor Trigger System  
-- Fraud Detection System  
+- AI Risk Prediction  
+- Dynamic Pricing  
+- Hybrid Trigger System  
+- Zero-Touch Claims  
+- Fraud Detection  
 - Automated Payout  
-- AI Work Recommendation  
 
 ---
 
 ## 🌍 Impact  
 
-- Provides financial protection to gig workers  
-- Reduces income instability  
-- Enables fast and fair compensation  
-- Builds trust in digital insurance systems  
+- Financial protection for gig workers  
+- Fast and fair compensation  
+- No manual claim process  
+- Real-world scalable solution  
 
 ---
 ## 🎥 Demo Video  
@@ -200,10 +214,8 @@ Link will be added here
 
 ---
 
-## 📌 Additional Notes  
+## 📌 Note  
 
-- Real delivery APIs are not publicly available, so mock APIs are used  
-- System focuses only on income protection  
-- Not covering health, accident, or vehicle insurance  
+This system focuses only on income loss and does not cover health, accident, or vehicle insurance.
 
 ---
