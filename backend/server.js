@@ -6,6 +6,7 @@ const userRoutes = require("./routes/userRoutes");
 const riskRoutes = require("./routes/riskRoutes");
 const pricingRoutes = require("./routes/pricingRoutes");
 const policyRoutes = require("./routes/policyRoutes");
+const triggerRoutes = require("./routes/triggerRoutes");
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/risk", riskRoutes);
 app.use("/api/pricing", pricingRoutes);
 app.use("/api/policy", policyRoutes);
+app.use("/api/trigger", triggerRoutes);
 
 // 🔹 MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
