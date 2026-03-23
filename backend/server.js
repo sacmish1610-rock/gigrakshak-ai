@@ -7,12 +7,14 @@ const riskRoutes = require("./routes/riskRoutes");
 const pricingRoutes = require("./routes/pricingRoutes");
 const policyRoutes = require("./routes/policyRoutes");
 const triggerRoutes = require("./routes/triggerRoutes");
+const claimRoutes = require("./routes/claimRoutes");
 
 const app = express();
 
 // 🔹 Middlewares
 app.use(cors());
 app.use(express.json());
+app.use("/api/claim", claimRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/risk", riskRoutes);
 app.use("/api/pricing", pricingRoutes);
