@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
+const { runTrigger, checkTrigger, simulateDisruption } = require("../controllers/triggerController");
 
-const { runTrigger } = require("../controllers/triggerController");
-
-// POST /api/trigger
 router.post("/", runTrigger);
+router.post("/check", checkTrigger);
+router.post("/simulate", simulateDisruption);
 
 module.exports = router;

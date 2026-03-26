@@ -1,9 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const { getPremium, getPlans } = require("../controllers/pricingController");
 
-const { getPremium } = require("../controllers/pricingController");
-
-// POST /api/pricing
 router.post("/", getPremium);
+router.get("/plans", getPlans);
 
 module.exports = router;
