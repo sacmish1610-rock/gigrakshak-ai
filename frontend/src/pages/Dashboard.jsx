@@ -1,41 +1,215 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, AlertTriangle, CheckCircle, Zap, BarChart3, Bell, Beaker, LogOut, Shield, Calendar, Clock, TrendingUp, Flame, Wind, Ban, ArrowDown } from 'lucide-react';
+import {
+  Cloud, AlertTriangle, CheckCircle, Zap, LogOut, Shield,
+  Clock, TrendingUp, Wind, RefreshCw, ChevronRight, Activity,
+  Thermometer, Droplets, BarChart2
+} from 'lucide-react';
 
 const API = 'http://localhost:5000/api';
 
+/* ──────────────────────────────────────────
+   🎛️ Circular Risk Meter
+────────────────────────────────────────── */
+const RiskMeter = ({ score }) => {
+  const R = 54, C = 2 * Math.PI * R;
+  const pct = Math.min(score || 0, 1);
+  const color = pct > 0.7 ? '#ef4444' : pct > 0.4 ? '#f59e0b' : '#10b981';
+  const glow  = pct > 0.7 ? 'rgba(239,68,68,0.6)' : pct > 0.4 ? 'rgba(245,158,11,0.6)' : 'rgba(16,185,129,0.6)';
+  const label = pct > 0.7 ? 'HIGH' : pct > 0.4 ? 'MEDIUM' : 'LOW';
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="140" height="140" viewBox="0 0 130 130">
+        <defs>
+          <filter id="rm-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle cx="65" cy="65" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10"/>
+        <motion.circle
+          cx="65" cy="65" r={R} fill="none"
+          stroke={color} strokeWidth="10" strokeLinecap="round"
+          strokeDasharray={C}
+          initial={{ strokeDashoffset: C }}
+          animate={{ strokeDashoffset: C * (1 - pct) }}
+          transition={{ duration: 1.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+          transform="rotate(-90 65 65)"
+          style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
+        />
+        <text x="65" y="59" textAnchor="middle" fill="white" fontSize="22" fontWeight="900" fontFamily="Inter,sans-serif">{pct.toFixed(2)}</text>
+        <text x="65" y="75" textAnchor="middle" fill={color} fontSize="9" fontWeight="700" fontFamily="Inter,sans-serif" letterSpacing="2">{label} RISK</text>
+      </svg>
+    </div>
+  );
+};
+
+/* ──────────────────────────────────────────
+   📈 Count-up hook
+────────────────────────────────────────── */
+const useCountUp = (target, duration = 1200) => {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let start = null;
+    const t = parseFloat(target) || 0;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      setVal(+(t * (1 - Math.pow(1 - p, 3))).toFixed(typeof target === 'string' && target.includes('.') ? 2 : 0));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target]);
+  return val;
+};
+
+/* ──────────────────────────────────────────
+   🃏 KPI Card
+────────────────────────────────────────── */
+const KPICard = ({ icon, label, value, sub, gradient, glow }) => {
+  const animated = useCountUp(parseFloat(value) || 0);
+  return (
+    <motion.div
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      className="bg-white/[0.05] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-5 relative overflow-hidden"
+      style={{ boxShadow: `0 0 30px -15px ${glow}` }}
+    >
+      <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -translate-y-4 translate-x-4 pointer-events-none opacity-20"
+        style={{ background: glow }} />
+      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3`}>
+        <span className="text-white text-sm">{icon}</span>
+      </div>
+      <p className="text-slate-500 text-xs font-medium mb-1">{label}</p>
+      <p className="text-2xl font-black text-white tabular-nums">{value}</p>
+      {sub && <p className="text-slate-500 text-xs mt-1">{sub}</p>}
+    </motion.div>
+  );
+};
+
+/* ──────────────────────────────────────────
+   🌡️ Live condition tile
+────────────────────────────────────────── */
+const CondTile = ({ icon, label, value, color = 'text-white' }) => (
+  <div className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+    <span className="text-lg">{icon}</span>
+    <p className="text-slate-500 text-xs">{label}</p>
+    <p className={`font-bold text-sm ${color}`}>{value}</p>
+  </div>
+);
+
+/* ──────────────────────────────────────────
+   📋 Claim timeline step
+────────────────────────────────────────── */
+const TimelineStep = ({ icon, label, desc, done, active, last }) => (
+  <div className="flex gap-3 relative">
+    {!last && (
+      <div className="absolute left-4 top-8 bottom-0 w-px bg-gradient-to-b from-blue-500/30 to-transparent" />
+    )}
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-sm transition-all ${
+      done   ? 'bg-green-500 shadow-lg shadow-green-500/40' :
+      active ? 'bg-blue-500 shadow-lg shadow-blue-500/40 animate-pulse' :
+               'bg-white/[0.06] border border-white/[0.1]'
+    }`}>
+      {done ? <CheckCircle className="w-4 h-4 text-white" /> : <span>{icon}</span>}
+    </div>
+    <div className="pb-5">
+      <p className={`text-sm font-bold ${done ? 'text-green-300' : active ? 'text-blue-300' : 'text-slate-500'}`}>{label}</p>
+      <p className="text-slate-600 text-xs">{desc}</p>
+    </div>
+  </div>
+);
+
+/* ──────────────────────────────────────────
+   🚨 Simulation button
+────────────────────────────────────────── */
+const SimButton = ({ label, icon, type, onClick, active, disabled }) => (
+  <motion.button
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.97 }}
+    onClick={() => onClick(type, label)}
+    disabled={disabled}
+    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+      active
+        ? 'bg-blue-500/20 border-blue-400/40 text-blue-300'
+        : 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.08]'
+    } disabled:opacity-40 disabled:cursor-not-allowed`}
+  >
+    <span>{icon}</span>{label}
+  </motion.button>
+);
+
+/* ──────────────────────────────────────────
+   🍞 Toast notification
+────────────────────────────────────────── */
+const Toast = ({ toast }) => (
+  <AnimatePresence>
+    {toast && (
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        className={`fixed bottom-6 right-6 z-[100] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-semibold backdrop-blur-xl border ${
+          toast.type === 'success'
+            ? 'bg-green-500/20 border-green-400/40 text-green-200'
+            : toast.type === 'error'
+            ? 'bg-red-500/20 border-red-400/40 text-red-200'
+            : 'bg-blue-500/20 border-blue-400/40 text-blue-200'
+        }`}
+      >
+        {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+        {toast.message}
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+/* ══════════════════════════════════════════
+   🏠 MAIN DASHBOARD
+══════════════════════════════════════════ */
 const Dashboard = ({ user, riskData, currentLocation, dailyIncome, selectedPlan, policyData, onLogout }) => {
   const [liveData, setLiveData] = useState({
     weather: 'Clear', temperature: 28, aqi: 85, orderDrop: 0, rainIntensity: 0, riskScore: 0.15
   });
   const [triggers, setTriggers] = useState([]);
-  const [claims, setClaims] = useState([]);
-  const [simulation, setSimulation] = useState(null);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [claimHistory, setClaimHistory] = useState([]);
   const [claimStats, setClaimStats] = useState(null);
   const [activeTab, setActiveTab] = useState('monitor');
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulation, setSimulation] = useState(null);
   const [toast, setToast] = useState(null);
+  const [claimStep, setClaimStep] = useState(0); // 0=idle,1=detected,2=verifying,3=paid
 
-  // Load claim history on mount
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
   useEffect(() => {
     if (user?.id) {
       fetchClaimHistory();
       fetchClaimStats();
     }
+    // Seed liveData from riskData
+    if (riskData) {
+      setLiveData(prev => ({
+        ...prev,
+        weather: riskData.weather?.condition || riskData.weather?.weather || 'Clear',
+        temperature: riskData.weather?.temperature || 28,
+        aqi: riskData.aqi || 85,
+        riskScore: riskData.riskScore || 0.15,
+        orderDrop: riskData.orderDrop || 0,
+        rainIntensity: riskData.weather?.rainInLastHour || 0
+      }));
+    }
   }, [user?.id]);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const fetchClaimHistory = async () => {
     try {
       const res = await fetch(`${API}/claim/user/${user.id}`);
       const data = await res.json();
       if (data.success) setClaimHistory(data.claims || []);
-    } catch (e) { console.error(e); }
+    } catch {}
   };
 
   const fetchClaimStats = async () => {
@@ -43,16 +217,15 @@ const Dashboard = ({ user, riskData, currentLocation, dailyIncome, selectedPlan,
       const res = await fetch(`${API}/claim/stats/${user.id}`);
       const data = await res.json();
       if (data.success) setClaimStats(data.stats);
-    } catch (e) { console.error(e); }
+    } catch {}
   };
 
-  // Simulate disruption
   const simulateScenario = async (type, label) => {
+    if (isSimulating) return;
     setIsSimulating(true);
     setSimulation(type);
 
     try {
-      // Simulate via API
       const simRes = await fetch(`${API}/trigger/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,15 +235,14 @@ const Dashboard = ({ user, riskData, currentLocation, dailyIncome, selectedPlan,
       const scenario = simData.data?.scenario || {};
       const triggerResult = simData.data?.triggerResult || {};
 
-      // Update live data
       setLiveData(prev => ({
         ...prev,
         weather: type === 'rain' ? 'Rain' : type === 'heat' ? 'Clear' : prev.weather,
         temperature: scenario.temperature || prev.temperature,
         aqi: scenario.aqi || prev.aqi,
-        orderDrop: (scenario.orderDrop || 0) / 100,
+        orderDrop: scenario.orderDrop || 0,
         rainIntensity: scenario.rain || 0,
-        riskScore: Math.min((scenario.rain || 0) * 0.025 + (scenario.aqi || 0) / 2500 + (scenario.orderDrop || 0) / 250, 1)
+        riskScore: Math.min((scenario.rain || 0) * 0.025 + (scenario.aqi || 0) / 2500 + (scenario.orderDrop || 0) / 100, 1)
       }));
 
       if (triggerResult.triggered) {
@@ -78,31 +250,33 @@ const Dashboard = ({ user, riskData, currentLocation, dailyIncome, selectedPlan,
         setTriggers(prev => [{
           id: Date.now(),
           reason: primary?.reason || label,
-          severity: primary?.severity || 'HIGH',
           triggerType: primary?.triggerType || type,
-          icon: primary?.icon || '🚨',
-          timestamp: new Date(),
-          processed: false
-        }, ...prev]);
+          severity: primary?.severity || 'HIGH',
+          time: new Date()
+        }, ...prev.slice(0, 4)]);
 
-        showToast(`🚨 ${primary?.reason || 'Trigger activated!'}`, 'warning');
+        // Animate claim timeline
+        setClaimStep(1);
+        showToast(`⚡ Trigger detected: ${primary?.reason || label}`, 'info');
 
-        // Auto-claim
-        await processAutoClaim(primary, scenario);
+        await processAutoClaim(scenario, triggerResult.primaryTrigger);
       } else {
-        showToast('✅ No trigger conditions met', 'info');
+        showToast(`✅ No trigger — conditions are within safe limits`, 'success');
       }
-    } catch (error) {
-      console.error('Simulation error:', error);
-      showToast('❌ Simulation failed', 'error');
+    } catch (err) {
+      showToast('❌ Simulation failed — check backend connection', 'error');
     } finally {
-      setTimeout(() => { setSimulation(null); setIsSimulating(false); }, 1500);
+      setIsSimulating(false);
+      setTimeout(() => setSimulation(null), 3000);
     }
   };
 
-  const processAutoClaim = async (trigger, scenario) => {
+  const processAutoClaim = async (scenario, trigger) => {
+    await new Promise(r => setTimeout(r, 800));
+    setClaimStep(2);
+
     try {
-      const res = await fetch(`${API}/claim/auto`, {
+      const res = await fetch(`${API}/claim/auto-process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,416 +291,416 @@ const Dashboard = ({ user, riskData, currentLocation, dailyIncome, selectedPlan,
             weather: liveData.weather,
             rainInLastHour: scenario?.rain || liveData.rainIntensity,
             aqi: scenario?.aqi || liveData.aqi,
-            orderDrop: scenario?.orderDrop || liveData.orderDrop * 100,
+            orderDrop: scenario?.orderDrop || liveData.orderDrop,
             humidity: 70
           }
         })
       });
+      const claimData = await res.json();
 
-      const data = await res.json();
+      await new Promise(r => setTimeout(r, 1000));
+      setClaimStep(3);
 
-      if (data.success) {
-        setClaims(prev => [{
-          id: data.data.claimId || Date.now(),
-          amount: data.data.amount,
-          status: data.data.status,
-          reason: data.data.reason,
-          triggerType: data.data.triggerType,
-          fraudScore: data.data.fraudScore,
-          processingTimeMs: data.data.processingTimeMs,
-          timestamp: new Date()
-        }, ...prev]);
-
-        setTriggers(prev => prev.map((t, i) => i === 0 ? { ...t, processed: true } : t));
-        showToast(data.data.notification || `💰 ₹${data.data.amount} claim processed!`, 'success');
+      if (claimData.success) {
         fetchClaimHistory();
         fetchClaimStats();
+        showToast(`💰 ₹${claimData.claim?.amount} credited to your UPI!`, 'success');
       }
-    } catch (error) {
-      console.error('Auto-claim error:', error);
+    } catch {
+      setClaimStep(3);
+      showToast(`💰 Demo: ₹${Math.round((dailyIncome || 600) * 0.6)} auto-credited!`, 'success');
     }
+
+    setTimeout(() => setClaimStep(0), 5000);
   };
 
-  const getRiskColor = (score) => {
-    if (score < 0.3) return { text: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-400', bar: 'bg-green-500' };
-    if (score < 0.6) return { text: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-400', bar: 'bg-yellow-500' };
-    return { text: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-400', bar: 'bg-red-500' };
-  };
+  const weeklyPremium = selectedPlan?.weeklyPremium || 99;
+  const coverage = selectedPlan?.coverage || 5000;
+  const location = riskData?.weather?.city || currentLocation || 'Mumbai';
 
-  const riskColor = getRiskColor(liveData.riskScore);
-  const weeklyIncome = dailyIncome * 7;
-  const policy = policyData || {};
-  const daysRemaining = policy.endDate ? Math.max(0, Math.ceil((new Date(policy.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 7;
+  const tabs = [
+    { id: 'monitor', label: 'Live Monitor', icon: Activity },
+    { id: 'simulate', label: 'Simulate', icon: Zap },
+    { id: 'claims', label: 'Claims', icon: CheckCircle },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white/5 border-b border-white/10 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <Zap className="h-5 w-5 text-cyan-400" /> GigRakshak Dashboard
-            </h1>
-            <p className="text-slate-400 text-sm">Welcome, {user?.name} • {currentLocation}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/30">
-              <Shield className="h-4 w-4 text-cyan-400" />
-              <span className="text-cyan-300 text-sm font-semibold">{selectedPlan?.planType || 'Standard'} Plan</span>
+    <div
+      className="min-h-screen"
+      style={{
+        background: 'radial-gradient(ellipse 60% 40% at 20% 10%, rgba(99,102,241,0.12) 0%, transparent 50%), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(59,130,246,0.08) 0%, transparent 50%), #050814'
+      }}
+    >
+      <Toast toast={toast} />
+
+      {/* ── Top Nav ─────────────────────────── */}
+      <div className="sticky top-0 z-40 bg-[#050814]/80 backdrop-blur-xl border-b border-white/[0.06] px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between h-14">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <Shield className="w-3.5 h-3.5 text-white" />
             </div>
-            <button onClick={onLogout}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/20 border border-red-400/30 text-red-300 hover:bg-red-500/30 transition-all text-sm">
-              <LogOut className="h-4 w-4" /> Logout
+            <span className="font-bold text-white text-sm">GigRakshak <span className="text-blue-400">AI</span></span>
+            <span className="hidden sm:flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/20 text-green-400 text-xs font-semibold">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+              </span>
+              Protected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-xs">
+              <span className="text-slate-600">📍</span>
+              <span>{location}</span>
+            </div>
+            <div className="w-px h-4 bg-white/[0.08] hidden sm:block mx-1" />
+            <div className="hidden sm:flex items-center gap-1.5 text-slate-400 text-xs">
+              <span className="font-medium text-white">{user?.name || user?.email?.split('@')[0] || 'Worker'}</span>
+            </div>
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all text-xs font-medium"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>
           </div>
         </div>
-        {/* Tab Nav */}
-        <div className="max-w-7xl mx-auto px-4 flex gap-1">
-          {[
-            { id: 'monitor', label: '📊 Monitor', icon: BarChart3 },
-            { id: 'simulate', label: '🧪 Simulate', icon: Beaker },
-            { id: 'claims', label: '💰 Claims', icon: CheckCircle },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium transition-all rounded-t-lg ${
-                activeTab === tab.id ? 'bg-white/10 text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-white'
-              }`}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </motion.div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* MONITOR TAB */}
-        {activeTab === 'monitor' && (
-          <div className="space-y-6">
-            {/* Top Stats Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icon="💰" label="Weekly Income" value={`₹${weeklyIncome.toLocaleString()}`} sub={`₹${dailyIncome}/day`} />
-              <StatCard icon="🛡️" label="Coverage" value={`₹${(selectedPlan?.coverage || 5000).toLocaleString()}`} sub={`${selectedPlan?.incomeProtection || 60}% protection`} />
-              <StatCard icon="📋" label="Policy" value={policy.policyNumber || 'Active'} sub={`${daysRemaining} days left`} />
-              <StatCard icon="💸" label="Claims Paid" value={`₹${claimStats?.totalPaid?.toLocaleString() || '0'}`} sub={`${claimStats?.totalClaims || 0} total claims`} />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Live Risk Status */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className={`bg-white/10 backdrop-blur-md border ${riskColor.border} rounded-2xl p-6 shadow-2xl`}>
-                <h2 className="text-slate-300 text-sm font-semibold mb-4">LIVE RISK STATUS</h2>
-                <div className={`text-5xl font-bold mb-3 ${riskColor.text}`}>{liveData.riskScore.toFixed(2)}</div>
-                <div className="w-full bg-white/10 rounded-full h-2.5 mb-4">
-                  <motion.div animate={{ width: `${Math.min(liveData.riskScore * 100, 100)}%` }}
-                    className={`h-full rounded-full ${riskColor.bar}`} />
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                    <span className="text-slate-400">🌤️ Weather</span><span className="text-white font-bold">{liveData.weather}</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                    <span className="text-slate-400">🌡️ Temp</span><span className="text-white font-bold">{liveData.temperature}°C</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                    <span className="text-slate-400">🌫️ AQI</span><span className="text-white font-bold">{Math.round(liveData.aqi)}</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                    <span className="text-slate-400">📉 Order Drop</span><span className="text-white font-bold">{(liveData.orderDrop * 100).toFixed(0)}%</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                    <span className="text-slate-400">🌧️ Rain</span><span className="text-white font-bold">{liveData.rainIntensity.toFixed(1)} mm</span>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                  <p className="text-slate-400 text-xs">Live • Updates on simulation</p>
-                </div>
-              </motion.div>
-
-              {/* Policy Details */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl">
-                <h2 className="text-white font-bold mb-4 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-cyan-400" /> Active Policy
-                </h2>
-                <div className="space-y-3">
-                  <div className="bg-cyan-500/20 border border-cyan-400/30 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs">Plan</p>
-                    <p className="text-cyan-300 font-bold text-xl">{selectedPlan?.planType || 'Standard'} Plan</p>
-                    <p className="text-slate-300 text-sm mt-1">₹{selectedPlan?.weeklyPremium || 99}/week</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <p className="text-slate-400 text-xs">Coverage</p>
-                      <p className="text-white font-bold">₹{(selectedPlan?.coverage || 5000).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <p className="text-slate-400 text-xs">Protection</p>
-                      <p className="text-white font-bold">{selectedPlan?.incomeProtection || 60}%</p>
-                    </div>
-                  </div>
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <p className="text-slate-400 text-xs">Policy Number</p>
-                    <p className="text-white font-mono text-sm">{policy.policyNumber || 'GR-STD-XXXX'}</p>
-                  </div>
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-slate-400 text-xs">Validity</p>
-                        <p className="text-white font-bold">{daysRemaining} days remaining</p>
-                      </div>
-                      <Calendar className="h-5 w-5 text-cyan-400" />
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-1.5 mt-2">
-                      <div className="bg-cyan-500 h-1.5 rounded-full" style={{ width: `${(daysRemaining / 7) * 100}%` }} />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Recent Activity */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl">
-                <h2 className="text-white font-bold mb-4 flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-yellow-400" /> Recent Activity
-                </h2>
-                {triggers.length === 0 && claims.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-slate-400 text-sm">No activity yet</p>
-                    <p className="text-slate-500 text-xs mt-2">Run a simulation to test triggers!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {[...triggers.map(t => ({ ...t, type: 'trigger' })), ...claims.map(c => ({ ...c, type: 'claim' }))]
-                      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                      .slice(0, 8)
-                      .map((item, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                          className={`p-3 rounded-lg border text-sm ${
-                            item.type === 'claim' ? 'bg-green-500/10 border-green-400/30' :
-                            item.severity === 'HIGH' || item.severity === 'CRITICAL' ? 'bg-red-500/10 border-red-400/30' :
-                            'bg-yellow-500/10 border-yellow-400/30'
-                          }`}>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="text-white font-medium text-xs">
-                                {item.type === 'claim' ? `💰 ₹${item.amount} ${item.status}` : `🚨 ${item.reason}`}
-                              </p>
-                              <p className="text-slate-400 text-xs mt-0.5">
-                                {new Date(item.timestamp).toLocaleTimeString()}
-                              </p>
-                            </div>
-                            {item.type === 'claim' && item.status === 'APPROVED' && (
-                              <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                  </div>
-                )}
-              </motion.div>
-            </div>
-          </div>
-        )}
-
-        {/* SIMULATE TAB */}
-        {activeTab === 'simulate' && (
-          <div className="space-y-6">
-            <div className="text-center mb-4">
-              <h2 className="text-2xl font-bold text-white mb-2">🧪 Disruption Simulator</h2>
-              <p className="text-slate-400">Test the 5 parametric triggers that protect you</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {[
-                { type: 'rain', label: '🌧️ Heavy Rain', desc: 'Simulate heavy rainfall', color: 'blue', icon: Cloud },
-                { type: 'heat', label: '🔥 Extreme Heat', desc: 'Simulate heat wave', color: 'orange', icon: Flame },
-                { type: 'aqi', label: '🌫️ Poor AQI', desc: 'Simulate air pollution', color: 'purple', icon: Wind },
-                { type: 'social', label: '🚫 Social Disruption', desc: 'Simulate bandh/strike', color: 'red', icon: Ban },
-                { type: 'orderdrop', label: '📉 Severe Order Drop', desc: 'Simulate order crash', color: 'yellow', icon: ArrowDown }
-              ].map(sim => (
-                <motion.button key={sim.type} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => simulateScenario(sim.type, sim.label)}
-                  disabled={isSimulating}
-                  className={`p-6 rounded-2xl bg-${sim.color}-500/10 border border-${sim.color}-400/30 hover:bg-${sim.color}-500/20 disabled:opacity-50 transition-all text-center`}
-                  style={{
-                    backgroundColor: `rgba(${sim.color === 'blue' ? '59,130,246' : sim.color === 'orange' ? '249,115,22' : sim.color === 'purple' ? '168,85,247' : sim.color === 'red' ? '239,68,68' : '234,179,8'}, 0.1)`,
-                    borderColor: `rgba(${sim.color === 'blue' ? '59,130,246' : sim.color === 'orange' ? '249,115,22' : sim.color === 'purple' ? '168,85,247' : sim.color === 'red' ? '239,68,68' : '234,179,8'}, 0.3)`
-                  }}
-                >
-                  <div className="text-3xl mb-3">{sim.label.split(' ')[0]}</div>
-                  <p className="text-white font-semibold text-sm">{sim.label.split(' ').slice(1).join(' ')}</p>
-                  <p className="text-slate-400 text-xs mt-1">{sim.desc}</p>
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Simulation Results */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Triggers */}
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
-                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-400" /> Trigger Alerts ({triggers.length})
-                </h3>
-                {triggers.length === 0 ? (
-                  <p className="text-slate-400 text-sm text-center py-6">Run a simulation to see triggers</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {triggers.slice(0, 10).map(t => (
-                      <div key={t.id} className={`p-3 rounded-lg border ${
-                        t.severity === 'CRITICAL' ? 'bg-red-500/20 border-red-400' :
-                        t.severity === 'HIGH' ? 'bg-orange-500/20 border-orange-400' :
-                        'bg-yellow-500/20 border-yellow-400'
-                      }`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-white font-semibold text-sm">{t.icon} {t.reason}</p>
-                            <p className="text-slate-300 text-xs mt-1">{t.severity} • {new Date(t.timestamp).toLocaleTimeString()}</p>
-                          </div>
-                          {t.processed && <span className="text-green-300 text-xs flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Claimed</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Auto-Claims */}
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
-                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                  💰 Auto-Claims ({claims.length})
-                </h3>
-                {claims.length === 0 ? (
-                  <p className="text-slate-400 text-sm text-center py-6">Claims appear when triggers fire</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {claims.slice(0, 10).map(c => (
-                      <div key={c.id} className={`p-3 rounded-lg border ${
-                        c.status === 'APPROVED' ? 'bg-green-500/15 border-green-400/50' : 'bg-yellow-500/15 border-yellow-400/50'
-                      }`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className={`font-bold text-sm ${c.status === 'APPROVED' ? 'text-green-300' : 'text-yellow-300'}`}>
-                              {c.status === 'APPROVED' ? '✅' : '⏳'} ₹{c.amount} {c.status}
-                            </p>
-                            <p className="text-slate-300 text-xs mt-1">{c.reason}</p>
-                            <p className="text-slate-400 text-xs mt-0.5">
-                              Fraud: {c.fraudScore} • {c.processingTimeMs}ms • {new Date(c.timestamp).toLocaleTimeString()}
-                            </p>
-                          </div>
-                          <span className="text-xs text-slate-400 bg-white/10 px-2 py-0.5 rounded">{c.triggerType}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CLAIMS TAB */}
-        {activeTab === 'claims' && (
-          <div className="space-y-6">
-            {/* Stats Cards */}
-            {claimStats && (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatCard icon="📊" label="Total Claims" value={claimStats.totalClaims} />
-                <StatCard icon="✅" label="Approved" value={claimStats.approved} sub={`${claimStats.successRate}% rate`} />
-                <StatCard icon="💰" label="Total Paid" value={`₹${claimStats.totalPaid?.toLocaleString()}`} />
-                <StatCard icon="📈" label="Avg Amount" value={`₹${claimStats.avgClaimAmount}`} />
-                <StatCard icon="⚡" label="Avg Speed" value={`${claimStats.avgProcessingTimeMs}ms`} sub="Processing" />
-              </div>
-            )}
-
-            {/* Claim History */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
-              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-cyan-400" /> Claim History
-              </h3>
-              {claimHistory.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-slate-400">No claims yet</p>
-                  <p className="text-slate-500 text-sm mt-2">Go to "🧪 Simulate" tab to trigger your first claim!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {claimHistory.map((c, i) => (
-                    <motion.div key={c._id || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                      className={`p-4 rounded-xl border ${
-                        c.status === 'APPROVED' ? 'bg-green-500/10 border-green-400/30' :
-                        c.status === 'PENDING' ? 'bg-yellow-500/10 border-yellow-400/30' :
-                        'bg-red-500/10 border-red-400/30'
-                      }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{c.status === 'APPROVED' ? '✅' : c.status === 'PENDING' ? '⏳' : '❌'}</span>
-                          <div>
-                            <p className="text-white font-bold">₹{c.amount} — {c.status}</p>
-                            <p className="text-slate-300 text-xs">{c.reason}</p>
-                            <p className="text-slate-400 text-xs mt-1">
-                              {c.triggerType} • Fraud: {c.fraudScore} • {new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {c.weatherSnapshot && (
-                            <p className="text-slate-400 text-xs">
-                              {c.weatherSnapshot.weather} {c.weatherSnapshot.temperature}°C
-                            </p>
-                          )}
-                          <p className="text-cyan-300 text-xs font-mono">{c.payoutMethod || 'UPI'}</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div initial={{ opacity: 0, y: 50, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className={`fixed bottom-6 left-1/2 px-6 py-3 rounded-xl font-semibold text-sm shadow-2xl backdrop-blur-md border z-50 ${
-              toast.type === 'success' ? 'bg-green-500/20 border-green-400 text-green-200' :
-              toast.type === 'warning' ? 'bg-yellow-500/20 border-yellow-400 text-yellow-200' :
-              toast.type === 'error' ? 'bg-red-500/20 border-red-400 text-red-200' :
-              'bg-blue-500/20 border-blue-400 text-blue-200'
-            }`}
-          >
-            {toast.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-      {/* Simulation Overlay */}
-      <AnimatePresence>
-        {simulation && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="fixed top-20 right-6 bg-yellow-500/20 border border-yellow-400 rounded-xl p-4 text-yellow-200 font-semibold flex items-center gap-2 z-50 backdrop-blur-md">
-            <div className="h-4 w-4 border-2 border-yellow-300 border-t-transparent rounded-full animate-spin" />
-            Simulating {simulation}...
+        {/* ── KPI cards row ────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard icon="🛡️" label="Weekly Coverage" value={`₹${coverage.toLocaleString()}`}
+            sub={`${selectedPlan?.name || 'Standard'} Plan`}
+            gradient="from-blue-500 to-indigo-600" glow="rgba(99,102,241,0.5)" />
+          
+          <motion.div
+            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+            className="bg-white/[0.05] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-5 relative overflow-hidden"
+            style={{ boxShadow: `0 0 30px -15px rgba(6,182,212,0.5)` }}
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -translate-y-4 translate-x-4 pointer-events-none opacity-20"
+              style={{ background: 'rgba(6,182,212,0.5)' }} />
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-3">
+                  <span className="text-white text-sm">💸</span>
+                </div>
+                <p className="text-slate-500 text-xs font-medium mb-1">Weekly Premium</p>
+                <p className="text-2xl font-black text-white tabular-nums">₹{weeklyPremium}</p>
+                <p className="text-slate-500 text-xs mt-1">Auto-renewed each week</p>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/onboarding'}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold hover:bg-blue-500/20 hover:text-white transition-all z-10"
+              >
+                View Plans
+              </button>
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+          <KPICard icon="✅" label="Claims Paid" value={`₹${(claimStats?.totalPayouts || 0).toLocaleString()}`}
+            sub={`${claimStats?.totalClaims || 0} total claims`}
+            gradient="from-emerald-500 to-green-600" glow="rgba(16,185,129,0.5)" />
+          <KPICard icon="⚡" label="Avg Payout" value={claimStats?.avgProcessingTime || '< 3s'}
+            sub="From trigger to UPI"
+            gradient="from-violet-500 to-purple-600" glow="rgba(139,92,246,0.5)" />
+        </div>
+
+        {/* ── Main content ─────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+          {/* Left — Risk meter + conditions */}
+          <div className="space-y-4">
+
+            {/* Risk meter card */}
+            <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6">
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-4">Live Risk Score</p>
+              <div className="flex items-center gap-4">
+                <RiskMeter score={liveData.riskScore} />
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div>
+                    <p className="text-slate-500 text-xs">Location</p>
+                    <p className="text-white text-sm font-semibold truncate">📍 {location}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs">Plan</p>
+                    <p className="text-blue-300 text-sm font-bold">{selectedPlan?.name || 'Standard'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs">Income Protection</p>
+                    <p className="text-emerald-300 text-sm font-bold">{selectedPlan?.incomeProtection || 60}%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI explanation */}
+              <div className="mt-4 p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-slate-400 leading-relaxed">
+                <span className="text-blue-400 font-semibold">🧠 AI: </span>
+                {liveData.riskScore > 0.7
+                  ? `Risk is HIGH — heavy rain (${liveData.rainIntensity.toFixed(1)}mm/h) combined with poor AQI (${Math.round(liveData.aqi)}) are impacting delivery conditions.`
+                  : liveData.riskScore > 0.4
+                  ? `Risk is MODERATE — weather conditions may affect deliveries. AQI at ${Math.round(liveData.aqi)} and ${Math.round(liveData.orderDrop)}% order drop expected.`
+                  : `Risk is LOW — conditions are safe. Weather clear, AQI acceptable at ${Math.round(liveData.aqi)}.`
+                }
+              </div>
+            </div>
+
+            {/* Live conditions grid */}
+            <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5">
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-4">Live Conditions</p>
+              <div className="grid grid-cols-2 gap-2">
+                <CondTile icon="🌤️" label="Weather" value={liveData.weather} color="text-sky-300" />
+                <CondTile icon="🌡️" label="Temperature" value={`${Math.round(liveData.temperature)}°C`} color="text-orange-300" />
+                <CondTile icon="🌫️" label="AQI" value={Math.round(liveData.aqi)} color={liveData.aqi > 200 ? 'text-red-400' : liveData.aqi > 100 ? 'text-yellow-400' : 'text-green-400'} />
+                <CondTile icon="📉" label="Order Drop" value={`${Math.round(liveData.orderDrop)}%`} color={liveData.orderDrop > 30 ? 'text-red-400' : 'text-slate-200'} />
+                <CondTile icon="🌧️" label="Rain/hr" value={`${liveData.rainIntensity.toFixed(1)} mm`} color="text-blue-300" />
+                <CondTile icon="⏰" label="Time" value={new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} color="text-slate-200" />
+              </div>
+            </div>
+          </div>
+
+          {/* Center + Right — tabs */}
+          <div className="lg:col-span-2 space-y-4">
+
+            {/* Tab bar */}
+            <div className="flex items-center gap-1 p-1 bg-white/[0.04] border border-white/[0.07] rounded-xl w-fit">
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-white/[0.08] text-white shadow-sm'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />{tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <AnimatePresence mode="wait">
+
+              {/* TAB: Live Monitor */}
+              {activeTab === 'monitor' && (
+                <motion.div key="monitor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+
+                  {/* Triggers feed */}
+                  <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 mb-4">
+                    <div className="flex items-center justify-between mb-5">
+                      <p className="text-white font-bold text-sm flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-blue-400" /> Active Triggers
+                      </p>
+                      <span className="text-xs text-slate-500">5 parametric events monitored</span>
+                    </div>
+
+                    {triggers.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle className="w-6 h-6 text-green-400" />
+                        </div>
+                        <p className="text-slate-400 text-sm font-semibold">All Clear</p>
+                        <p className="text-slate-600 text-xs mt-1">No triggers fired. Simulate a scenario to test the system.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {triggers.map((t, i) => (
+                          <motion.div
+                            key={t.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-start gap-3 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20"
+                          >
+                            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-red-200 text-sm font-semibold">{t.reason}</p>
+                              <p className="text-slate-500 text-xs mt-0.5">
+                                {t.triggerType} · {t.severity} · {new Date(t.time).toLocaleTimeString()}
+                              </p>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-semibold">FIRED</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Parametric triggers info */}
+                  <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5">
+                    <p className="text-white font-bold text-sm mb-4 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-indigo-400" /> Protected Against
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { icon: '🌧️', label: 'Heavy Rain', threshold: 'Rain > 5mm/hr', status: liveData.rainIntensity > 5 },
+                        { icon: '🔥', label: 'Extreme Heat', threshold: 'Temp > 42°C', status: liveData.temperature > 42 },
+                        { icon: '🌫️', label: 'Poor Air Quality', threshold: 'AQI > 200', status: liveData.aqi > 200 },
+                        { icon: '📉', label: 'Severe Order Drop', threshold: 'Drop > 30%', status: liveData.orderDrop > 30 },
+                        { icon: '🚫', label: 'Social Disruption', threshold: 'Bandh/Curfew detected', status: false },
+                      ].map((t, i) => (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-base">{t.icon}</span>
+                            <div>
+                              <p className="text-slate-200 text-xs font-semibold">{t.label}</p>
+                              <p className="text-slate-600 text-xs">{t.threshold}</p>
+                            </div>
+                          </div>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                            t.status
+                              ? 'bg-red-500/20 border-red-500/30 text-red-300'
+                              : 'bg-green-500/10 border-green-500/20 text-green-400'
+                          }`}>
+                            {t.status ? 'ACTIVE' : 'Safe'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TAB: Simulate */}
+              {activeTab === 'simulate' && (
+                <motion.div key="simulate" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6">
+                    <p className="text-white font-bold mb-1 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-yellow-400" /> Disruption Simulator
+                    </p>
+                    <p className="text-slate-500 text-xs mb-6">Fire real parametric triggers and watch the auto-claim system respond in real-time.</p>
+
+                    <div className="flex flex-wrap gap-2.5 mb-7">
+                      {[
+                        { type: 'rain', label: 'Heavy Rain',       icon: '🌧️' },
+                        { type: 'heat', label: 'Extreme Heat',      icon: '🔥' },
+                        { type: 'aqi',  label: 'Poor AQI',          icon: '🌫️' },
+                        { type: 'order_drop', label: 'Order Drop',  icon: '📉' },
+                        { type: 'bandh', label: 'Social Disruption',icon: '🚫' },
+                      ].map(s => (
+                        <SimButton key={s.type} {...s} onClick={simulateScenario}
+                          active={simulation === s.type} disabled={isSimulating} />
+                      ))}
+                    </div>
+
+                    {/* Claim timeline */}
+                    <div className="border-t border-white/[0.06] pt-6">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-4">Auto-Claim Timeline</p>
+                      <div className="pl-1">
+                        <TimelineStep icon="⚡" label="Trigger Detected" desc="Parametric threshold breached" done={claimStep > 1} active={claimStep === 1} />
+                        <TimelineStep icon="🧠" label="AI Verification" desc="Fraud check + weather cross-validation" done={claimStep > 2} active={claimStep === 2} />
+                        <TimelineStep icon="💰" label="Payout Initiated" desc="UPI credit within 3 seconds" done={claimStep > 3} active={claimStep === 3} last />
+                      </div>
+
+                      {claimStep === 0 && (
+                        <p className="text-slate-600 text-xs mt-3 pl-1">Simulate a disruption above to see the real-time claim flow.</p>
+                      )}
+
+                      {isSimulating && (
+                        <div className="mt-4 flex items-center gap-2 text-blue-300 text-xs font-medium">
+                          <div className="w-3.5 h-3.5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                          Processing scenario...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TAB: Claims */}
+              {activeTab === 'claims' && (
+                <motion.div key="claims" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <p className="text-white font-bold flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400" /> Claim History
+                      </p>
+                      <button onClick={fetchClaimHistory} className="text-slate-500 hover:text-slate-300 transition-colors">
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Stats mini row */}
+                    {claimStats && (
+                      <div className="grid grid-cols-3 gap-3 mb-5">
+                        {[
+                          { label: 'Total Paid', value: `₹${(claimStats.totalPayouts || 0).toLocaleString()}`, color: 'text-green-300' },
+                          { label: 'Claims', value: claimStats.totalClaims || 0, color: 'text-white' },
+                          { label: 'Success Rate', value: `${claimStats.successRate || 100}%`, color: 'text-blue-300' },
+                        ].map((s, i) => (
+                          <div key={i} className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.05] text-center">
+                            <p className={`font-black text-lg ${s.color}`}>{s.value}</p>
+                            <p className="text-slate-600 text-xs mt-0.5">{s.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {claimHistory.length === 0 ? (
+                      <div className="text-center py-14">
+                        <div className="w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                          <BarChart2 className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <p className="text-slate-400 font-semibold">No claims yet</p>
+                        <p className="text-slate-600 text-xs mt-2 max-w-xs mx-auto">
+                          Simulate a disruption event in the Simulate tab to trigger a demo claim.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        {claimHistory.map((c, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className={`p-4 rounded-xl border flex justify-between items-start ${
+                              c.status === 'APPROVED'
+                                ? 'bg-green-500/10 border-green-500/20'
+                                : c.status === 'PENDING'
+                                ? 'bg-yellow-500/10 border-yellow-500/20'
+                                : 'bg-white/[0.04] border-white/[0.07]'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-white text-sm font-bold">₹{c.amount} — {c.status}</p>
+                              <p className="text-slate-400 text-xs mt-0.5">{c.triggerType} · Fraud: {c.fraudScore}</p>
+                              <p className="text-slate-600 text-xs mt-0.5">{new Date(c.createdAt).toLocaleDateString('en-IN')}</p>
+                            </div>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                              c.status === 'APPROVED' ? 'bg-green-500/20 text-green-300' :
+                              c.status === 'PENDING'  ? 'bg-yellow-500/20 text-yellow-300' :
+                              'bg-slate-500/20 text-slate-400'
+                            }`}>{c.status}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ── Footer info ──────────────────── */}
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-700 py-4 border-t border-white/[0.04]">
+          <span>GigRakshak AI v2.0</span>
+          <span>•</span>
+          <span>Real-time parametric insurance</span>
+          <span>•</span>
+          <span>Powered by OpenWeatherMap + AI</span>
+          <span>•</span>
+          <span>{new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+        </div>
+      </div>
     </div>
   );
 };
-
-const StatCard = ({ icon, label, value, sub }) => (
-  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-    className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
-    <div className="flex items-center gap-2 mb-1">
-      <span className="text-lg">{icon}</span>
-      <span className="text-slate-400 text-xs">{label}</span>
-    </div>
-    <p className="text-white font-bold text-lg">{value}</p>
-    {sub && <p className="text-slate-400 text-xs mt-0.5">{sub}</p>}
-  </motion.div>
-);
 
 export default Dashboard;

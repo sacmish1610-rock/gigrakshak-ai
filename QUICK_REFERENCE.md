@@ -1,53 +1,126 @@
-# 🎯 Risk Calculator - Quick Reference
+# 📋 QUICK REFERENCE CARD - GigRAKSHAK AI 2.0
 
-## 🚀 Quick Start (TL;DR)
+## 🚀 ONE-MINUTE STARTUP
 
-```bash
-# 1. Install backend deps
-cd backend && npm install
+```powershell
+# Terminal 1: Backend
+cd backend
+npm install
+npm run dev
 
-# 2. Create .env file with OpenWeather API key
-echo "OPENWEATHER_API_KEY=your_key_here" > .env
+# Terminal 2: Frontend  
+cd frontend
+npm install
+npm run dev
+```
 
-# 3. Start backend
-npm start
+**Backend URL:** http://localhost:5000  
+**Frontend URL:** http://localhost:5173
 
-# 4. In new terminal, start frontend
-cd frontend && npm run dev
+---
 
-# 5. Visit http://localhost:5173 and test Risk Calculator
+## 🌐 ENVIRONMENT VARIABLES
+
+### Backend (.env)
+```env
+JWT_SECRET=your_secret_key_here
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/gigrakshak
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+OPENWEATHER_API_KEY=your_key
+```
+
+### Frontend (.env.local)
+```env
+VITE_API_URL=http://localhost:5000/api
 ```
 
 ---
 
-## 📡 API Flow
+## 🔗 API ENDPOINTS
 
-```
-User Input (Location + Income)
-    ↓
-[RiskCalculator Component]
-    ↓
-POST /api/risk (backend)
-    ↓
-[riskController] 
-    ↓
-[weather.js] - Fetch real weather
-    ↓
-[riskEngine.js] - Calculate risk = (rain × 0.3) + (aqi × 0.002) + (orderDrop × 0.4)
-    ↓
-Return: {riskScore, riskLevel, weather, AQI, orderDrop, etc.}
-    ↓
-Display in UI with visualizations
-```
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/auth/register` | ❌ | Create account |
+| POST | `/api/auth/login` | ❌ | User login |
+| GET | `/api/auth/me` | ✅ | Get profile |
+| POST | `/api/auth/refresh-token` | ✅ | Refresh JWT |
+| GET | `/api/health` | ❌ | Health check |
 
 ---
 
-## 🏗️ Architecture
+## 🧪 TEST THE APP
 
-### Backend Structure
+**Sign Up:**
+- Email: test@example.com
+- Password: password123
+- Pincode: 560001 (auto-fills Bangalore)
+- Income: 500 ₹
+
+**Then Login** with same credentials
+
+---
+
+## 🛡️ SECURITY
+
+- Rate Limit: 100 req/15min globally, 5 login/15min
+- Auth: JWT (30 days expiry)
+- Password: bcryptjs with salt=10
+- CORS: Restricted to FRONTEND_URL
+
+---
+
+## 🆘 QUICK FIXES
+
+| Issue | Fix |
+|-------|-----|
+| Port in use | `taskkill /PID <PID> /F` |
+| Can't connect DB | Check MONGO_URI, whitelist IP |
+| Can't reach backend | Ensure backend running on 5000 |
+| Rate limited | Wait 15 mins |
+
+---
+
+## 📚 DOCUMENTATION
+
+1. **START HERE:** `00_START_HERE.md`
+2. **5-Min Setup:** `QUICKSTART_5MIN.md`
+3. **Full Setup:** `PRODUCTION_SETUP.md`
+4. **All Fixes:** `FIXES_SUMMARY.md`
+5. **API Ref:** `API_DOCUMENTATION.md`
+
+---
+
+## 📁 KEY FILES
+
 ```
 backend/
-├── utils/
+├── .env                    ← Secrets (DON'T COMMIT)
+├── server.js              ← Entry point
+└── middleware/            ← NEW middleware
+
+frontend/
+├── .env.local             ← Config
+└── src/services/api.js    ← NEW API service
+```
+
+---
+
+## ✅ BEFORE PRODUCTION
+
+- [ ] Generate new JWT_SECRET
+- [ ] Update MongoDB password
+- [ ] Whitelist production IP
+- [ ] Set NODE_ENV=production
+- [ ] Update API URLs
+- [ ] Enable HTTPS
+- [ ] Test all flows
+- [ ] Setup monitoring
+
+---
+
+**Status:** ✅ Production Ready | **Version:** 2.0.0 | **Date:** April 1, 2026
 │   └── weather.js          ← NEW: Fetch weather, AQI, simulate order drop
 ├── services/
 │   └── riskEngine.js       ← UPDATED: Risk calculation formula

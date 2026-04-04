@@ -1,74 +1,127 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Menu, X } from 'lucide-react';
 
-const Navbar = ({ onGetStarted }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const Navbar = ({ onGetStarted, onAdmin }) => {
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const links = [
+    { label: 'Features', href: '#features' },
+    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'API', href: '#api' },
+  ];
 
   return (
-    <nav className="fixed w-full z-50 top-0 transition-all duration-300 bg-white/70 backdrop-blur-md border-b border-white/20 shadow-sm">
+    <motion.nav
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-[#050814]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-lg shadow-black/30'
+          : 'bg-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <div className="flex items-center gap-2 cursor-pointer">
-            <motion.div 
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.3 }}
-              className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/30"
+        <div className="flex items-center justify-between h-16">
+
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 cursor-pointer select-none">
+            <motion.div
+              whileHover={{ rotate: 15, scale: 1.1 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+              className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-900/50"
             >
-              <Shield className="w-6 h-6" />
+              <Shield className="w-4 h-4 text-white" />
             </motion.div>
-            <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
-              GigRakshak AI
+            <span className="font-bold text-white text-base tracking-tight">
+              GigRakshak <span className="text-blue-400">AI</span>
             </span>
           </div>
 
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Features</a>
-            <a href="#how-it-works" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">How it Works</a>
-            <a href="#api" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">API Core</a>
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1">
+            {links.map(l => (
+              <a
+                key={l.label}
+                href={l.href}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all duration-150"
+              >
+                {l.label}
+              </a>
+            ))}
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
-            <button className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors px-4 py-2">
-              Sign In
-            </button>
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+          {/* Desktop CTA */}
+          <div className="hidden md:flex items-center gap-3">
+            {onAdmin && (
+              <button
+                onClick={onAdmin}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.08] transition-all"
+              >
+                🏢 Admin
+              </button>
+            )}
+            <motion.button
               onClick={onGetStarted}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg shadow-slate-900/20"
+              whileHover={{ scale: 1.04, boxShadow: '0 0 30px -5px rgba(99,102,241,0.6)' }}
+              whileTap={{ scale: 0.97 }}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-900/30 transition-all"
             >
-              Get Started
+              Get Protected →
             </motion.button>
           </div>
-          
-          <div className="md:hidden flex items-center">
-            <button onClick={() => setIsOpen(!isOpen)} className="text-slate-600 focus:outline-none">
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all"
+            onClick={() => setMenuOpen(v => !v)}
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
-      
+
       {/* Mobile menu */}
-      {isOpen && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="md:hidden bg-white/95 backdrop-blur-xl border-b border-slate-100"
-        >
-          <div className="px-4 pt-2 pb-6 space-y-2">
-            <a href="#features" className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg">Features</a>
-            <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg">How it Works</a>
-            <a href="#api" className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg">API Core</a>
-            <div className="pt-4 flex flex-col gap-3">
-              <button className="w-full text-center px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700">Sign In</button>
-              <button onClick={onGetStarted} className="w-full text-center px-4 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20">Get Started</button>
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden overflow-hidden bg-[#050814]/95 backdrop-blur-xl border-b border-white/[0.06]"
+          >
+            <div className="px-4 py-4 space-y-1">
+              {links.map(l => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all"
+                >
+                  {l.label}
+                </a>
+              ))}
+              <div className="pt-3 space-y-2">
+                <button
+                  onClick={() => { setMenuOpen(false); onGetStarted(); }}
+                  className="w-full px-5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg"
+                >
+                  Get Protected →
+                </button>
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 };
 

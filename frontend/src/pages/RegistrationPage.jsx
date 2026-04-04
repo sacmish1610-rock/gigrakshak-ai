@@ -1,254 +1,420 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, IndianRupee, Zap, AlertCircle, CheckCircle, Clock, Bike, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, IndianRupee, Zap, CheckCircle, Clock, Bike, User, Shield, Briefcase, Mail, Phone, Lock, Eye, EyeOff, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { authService, handleApiError } from '../services/api';
 
-const RegistrationPage = ({ onRegistrationSuccess }) => {
-  const [step, setStep] = useState(1);
+const RegistrationPage = ({ onRegistrationSuccess, onSwitchToLogin }) => {
+  const [step, setStep] = useState(1); // 1 = Account, 2 = Location, 3 = Work
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
-    location: '',
-    zone: '',
-    dailyIncome: '',
-    platform: 'Zomato',
+    pincode: '',
+    city: '',
+    state: '',
+    income: '',
+    workType: 'Zomato',
     vehicleType: 'Bike',
-    workingHours: '8',
-    experienceMonths: '6'
+    experience: '0'
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-
+  const [fetchingPincode, setFetchingPincode] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  
   const platforms = ['Zomato', 'Swiggy', 'Zepto', 'Blinkit', 'Amazon', 'Flipkart', 'Dunzo', 'Uber Eats', 'Other'];
   const vehicles = ['Bicycle', 'Bike', 'Scooter', 'Auto', 'Car', 'On Foot', 'Other'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setError(null);
   };
 
-  const validateStep1 = () => {
-    if (!formData.name.trim()) return 'Name is required';
-    if (!formData.location.trim()) return 'Location is required';
-    if (!formData.dailyIncome || isNaN(formData.dailyIncome) || parseFloat(formData.dailyIncome) <= 0) {
-      return 'Valid daily income is required';
+  const [manualEntry, setManualEntry] = useState(false);
+
+  const handlePincodeChange = async (e) => {
+    const pin = e.target.value.replace(/\D/g, ''); // digits only
+    setFormData(prev => ({ ...prev, pincode: pin, city: '', state: '' }));
+    setManualEntry(false);
+
+    if (pin.length !== 6) return;
+
+    setFetchingPincode(true);
+
+    try {
+      // Call our own backend proxy — avoids CORS, browser blocks, & API reliability issues
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${API_BASE}/pincode/${pin}`);
+      const data = await res.json();
+
+      if (data.success && data.district && data.state) {
+        setFormData(prev => ({
+          ...prev,
+          city: data.district,
+          state: data.state,
+        }));
+        toast.success(`📍 ${data.district}, ${data.state}`);
+      } else {
+        // Backend returned failure — let user type manually
+        toast('✏️ Please enter your city & state manually', { duration: 3500 });
+        setManualEntry(true);
+      }
+    } catch (err) {
+      console.warn('Pincode proxy failed:', err.message);
+      toast('✏️ Please enter your city & state manually', { duration: 3500 });
+      setManualEntry(true);
+    } finally {
+      setFetchingPincode(false);
     }
-    return null;
   };
 
-  const handleNext = () => {
-    const err = validateStep1();
-    if (err) { setError(err); return; }
-    setError(null);
-    setStep(2);
+  const nextStep = () => {
+    if (step === 1) {
+      // Validate Step 1: Account Details
+      if (!formData.name.trim()) {
+        toast.error('❌ Please enter your name');
+        return;
+      }
+      if (!formData.email.trim()) {
+        toast.error('❌ Please enter your email');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        toast.error('❌ Invalid email format');
+        return;
+      }
+      if (!formData.password) {
+        toast.error('❌ Please enter a password');
+        return;
+      }
+      if (formData.password.length < 6) {
+        toast.error('❌ Password must be at least 6 characters');
+        return;
+      }
+    }
+    if (step === 2) {
+      // Validate Step 2: Location
+      if (!formData.pincode || formData.pincode.length !== 6) {
+        toast.error('❌ Please enter a valid 6-digit Pincode');
+        return;
+      }
+      if (fetchingPincode) {
+        toast('⏳ Still looking up pincode, please wait...', { icon: '🔍' });
+        return;
+      }
+      if (!formData.city.trim()) {
+        toast.error('❌ Please enter your District/City');
+        return;
+      }
+      if (!formData.state.trim()) {
+        toast.error('❌ Please enter your State');
+        return;
+      }
+    }
+    setStep(prev => prev + 1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Final validation
+    if (!formData.workType || !formData.income || parseFloat(formData.income) <= 0) {
+      toast.error('❌ Please enter a valid daily income');
+      return;
+    }
+
     setLoading(true);
-    setError(null);
-
     try {
-      const response = await fetch('http://localhost:5000/api/users/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim() || undefined,
-          phone: formData.phone.trim() || undefined,
-          location: formData.location.trim(),
-          zone: formData.zone.trim() || formData.location.trim(),
-          dailyIncome: parseFloat(formData.dailyIncome),
-          platform: formData.platform,
-          vehicleType: formData.vehicleType,
-          workingHours: parseInt(formData.workingHours) || 8,
-          experienceMonths: parseInt(formData.experienceMonths) || 0
-        })
+      const response = await authService.register({
+        ...formData,
+        income: parseFloat(formData.income),
+        experience: parseFloat(formData.experience)
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
+      
+      if (response.success && response.data?.user) {
+        toast.success(response.message || '✅ Registration successful');
+        onRegistrationSuccess(response.data.user);
+      } else {
+        toast.error(response.message || 'Registration failed');
       }
-
-      const data = await response.json();
-      setSuccess(true);
-
-      setTimeout(() => {
-        if (onRegistrationSuccess) {
-          onRegistrationSuccess({
-            id: data.user._id,
-            name: data.user.name,
-            email: data.user.email,
-            location: data.user.location,
-            zone: data.user.zone,
-            dailyIncome: data.user.dailyIncome,
-            platform: data.user.platform,
-            vehicleType: data.user.vehicleType,
-            workingHours: data.user.workingHours,
-            experienceMonths: data.user.experienceMonths
-          });
-        }
-      }, 1200);
-
-    } catch (err) {
-      setError(err.message || 'Registration failed');
+    } catch (error) {
+      const errorMsg = handleApiError(error);
+      toast.error(errorMsg);
+      console.error('Registration error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const inputClass = "w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all disabled:opacity-50";
+  const inputClass = "w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm";
+  const selectClass = "w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm appearance-none";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{
+      background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.3) 0%, transparent 70%), #050814'
+    }}>
+      {/* Floating orbs */}
+      <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/3 left-1/4 w-48 h-48 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-lg"
+        className="w-full max-w-2xl relative"
       >
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white/[0.05] backdrop-blur-3xl border border-white/[0.1] rounded-3xl p-8 shadow-2xl shadow-black/50 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-0" />
+
           {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <div className="bg-gradient-to-br from-cyan-400 to-blue-500 p-3 rounded-xl">
-                <Zap className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <h1 className="text-white text-3xl font-bold mb-2">Join GigRakshak</h1>
-            <p className="text-slate-300 text-sm">Step {step} of 2 — {step === 1 ? 'Basic Details' : 'Work Profile'}</p>
+          <div className="relative z-10 text-center mb-8">
+            <motion.div
+              whileHover={{ rotate: 10, scale: 1.1 }}
+              className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 items-center justify-center mb-4 shadow-xl shadow-blue-900/40"
+            >
+              <Shield className="w-7 h-7 text-white" />
+            </motion.div>
+            <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Create Account</h1>
+            <p className="text-slate-400 text-sm">Step {step} of 3</p>
           </div>
 
-          {/* Step Indicators */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className={`flex-1 h-1.5 rounded-full ${step >= 1 ? 'bg-cyan-400' : 'bg-white/20'}`} />
-            <div className={`flex-1 h-1.5 rounded-full ${step >= 2 ? 'bg-cyan-400' : 'bg-white/20'}`} />
+          {/* Progress Bar */}
+          <div className="relative z-10 w-full h-1 bg-white/10 rounded-full mb-8 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600"
+              animate={{ width: `${(step / 3) * 100}%` }}
+              transition={{ duration: 0.3 }}
+            />
           </div>
 
-          {/* Error */}
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-              <p className="text-red-300 text-sm">{error}</p>
-            </motion.div>
-          )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+            {/* ────────────────────────────────────
+                STEP 1: Account Details
+            ──────────────────────────────────── */}
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <User size={16} /> Name
+                    </label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Your full name" className={inputClass}  disabled={loading} />
+                  </div>
 
-          {/* Success */}
-          {success && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="mb-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-400" />
-              <div>
-                <p className="text-green-300 text-sm font-medium">Registration successful! ✅</p>
-                <p className="text-green-300/70 text-xs">Proceeding to risk assessment...</p>
-              </div>
-            </motion.div>
-          )}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Mail size={16} /> Email
+                    </label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="your@email.com" className={inputClass} disabled={loading} />
+                  </div>
 
-          {/* Step 1: Basic Details */}
-          {!success && step === 1 && (
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-              <div>
-                <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
-                  <User className="h-4 w-4 text-cyan-400" /> Full Name *
-                </label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Rahul Sharma" className={inputClass} />
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Lock size={16} /> Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPwd ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="At least 6 characters"
+                        className={inputClass + " pr-12"}
+                        disabled={loading}
+                      />
+                      <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-3 text-slate-400">
+                        {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-cyan-400" /> Work Location *
-                </label>
-                <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Mumbai, Delhi, Bangalore..." className={inputClass} />
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Phone size={16} /> Phone (Optional)
+                    </label>
+                    <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="10-digit mobile number" className={inputClass} disabled={loading} />
+                  </div>
+                </motion.div>
+              )}
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
-                  <IndianRupee className="h-4 w-4 text-cyan-400" /> Daily Income (₹) *
-                </label>
-                <input type="number" name="dailyIncome" value={formData.dailyIncome} onChange={handleChange} placeholder="800" min="1" className={inputClass} />
-                {formData.dailyIncome > 0 && (
-                  <p className="text-cyan-300/60 text-xs mt-1">Weekly income: ₹{(parseFloat(formData.dailyIncome) * 7).toLocaleString()}</p>
-                )}
-              </div>
+              {/* ────────────────────────────────────
+                  STEP 2: Location
+              ──────────────────────────────────── */}
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <MapPin size={16} /> Pincode
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="pincode"
+                        value={formData.pincode}
+                        onChange={handlePincodeChange}
+                        placeholder="Enter 6-digit pincode"
+                        className={inputClass}
+                        maxLength="6"
+                        inputMode="numeric"
+                        disabled={loading || fetchingPincode}
+                      />
+                      {fetchingPincode && (
+                        <div className="absolute right-3 top-3 flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {!fetchingPincode && formData.city && (
+                        <div className="absolute right-3 top-3 text-green-400 text-xs font-semibold">✓ Detected</div>
+                      )}
+                      {!fetchingPincode && manualEntry && (
+                        <div className="absolute right-3 top-3 text-amber-400 text-xs font-semibold">✏️ Manual</div>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Email (optional)</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="rahul@example.com" className={inputClass} />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1">
+                        District / City
+                        {manualEntry && <span className="text-amber-400 text-[10px]">(required)</span>}
+                      </label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={manualEntry ? handleChange : undefined}
+                        placeholder={manualEntry ? "Enter your district" : "Auto-filled from pincode"}
+                        className={inputClass}
+                        disabled={!manualEntry || loading}
+                        style={manualEntry ? {} : { opacity: 0.7 }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1">
+                        State
+                        {manualEntry && <span className="text-amber-400 text-[10px]">(required)</span>}
+                      </label>
+                      <input
+                        type="text"
+                        name="state"
+                        value={formData.state}
+                        onChange={manualEntry ? handleChange : undefined}
+                        placeholder={manualEntry ? "Enter your state" : "Auto-filled from pincode"}
+                        className={inputClass}
+                        disabled={!manualEntry || loading}
+                        style={manualEntry ? {} : { opacity: 0.7 }}
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Phone (optional)</label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+91 9876543210" className={inputClass} />
-              </div>
+                  {manualEntry && (
+                    <p className="text-xs text-amber-400/80 flex items-start gap-1.5">
+                      <span>⚠️</span>
+                      <span>Pincode lookup is currently unavailable. Please type your District and State manually above to continue.</span>
+                    </p>
+                  )}
+                </motion.div>
+              )}
 
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleNext}
-                className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-cyan-500/50 transition-all">
-                Next → Work Profile
-              </motion.button>
-            </motion.div>
-          )}
 
-          {/* Step 2: Work Profile */}
-          {!success && step === 2 && (
-            <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Delivery Platform *</label>
-                <select name="platform" value={formData.platform} onChange={handleChange} className={inputClass + " bg-slate-800"}>
-                  {platforms.map(p => <option key={p} value={p} className="bg-slate-800">{p}</option>)}
-                </select>
-              </div>
+              {/* ────────────────────────────────────
+                  STEP 3: Work Details
+              ──────────────────────────────────── */}
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Briefcase size={16} /> Platform
+                    </label>
+                    <select name="workType" value={formData.workType} onChange={handleChange} className={selectClass} disabled={loading}>
+                      {platforms.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
-                  <Bike className="h-4 w-4 text-cyan-400" /> Vehicle Type
-                </label>
-                <select name="vehicleType" value={formData.vehicleType} onChange={handleChange} className={inputClass + " bg-slate-800"}>
-                  {vehicles.map(v => <option key={v} value={v} className="bg-slate-800">{v}</option>)}
-                </select>
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Bike size={16} /> Vehicle Type
+                    </label>
+                    <select name="vehicleType" value={formData.vehicleType} onChange={handleChange} className={selectClass} disabled={loading}>
+                      {vehicles.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-cyan-400" /> Working Hours/Day
-                </label>
-                <input type="number" name="workingHours" value={formData.workingHours} onChange={handleChange} min="1" max="18" className={inputClass} />
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <Clock size={16} /> Experience (Years)
+                    </label>
+                    <input type="number" name="experience" value={formData.experience} onChange={handleChange} placeholder="0" min="0" className={inputClass} disabled={loading} />
+                  </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Experience (months)</label>
-                <input type="number" name="experienceMonths" value={formData.experienceMonths} onChange={handleChange} min="0" className={inputClass} />
-                {parseInt(formData.experienceMonths) > 12 && (
-                  <p className="text-green-300/60 text-xs mt-1">✨ Experienced worker — eligible for premium discount!</p>
-                )}
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                      <IndianRupee size={16} /> Daily Income (₹)
+                    </label>
+                    <input type="number" name="income" value={formData.income} onChange={handleChange} placeholder="Average daily earnings" min="0" step="100" className={inputClass} disabled={loading} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Work Zone (area/neighborhood)</label>
-                <input type="text" name="zone" value={formData.zone} onChange={handleChange} placeholder="Koramangala, Andheri West..." className={inputClass} />
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setStep(1)}
-                  className="px-6 py-3 bg-white/10 border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-all">
+            {/* Action Buttons */}
+            <div className="relative z-10 flex gap-4 mt-8 pt-4 border-t border-white/10">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(prev => prev - 1)}
+                  disabled={loading}
+                  className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all"
+                >
                   ← Back
                 </button>
-                <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-cyan-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+              )}
+              
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
                   {loading ? (
-                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Registering...</>
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Creating Account...</span>
+                    </>
                   ) : (
-                    <><CheckCircle className="h-5 w-5" /> Register & Continue</>
+                    <>
+                      <CheckCircle size={20} />
+                      <span>Create Account</span>
+                    </>
                   )}
-                </motion.button>
-              </div>
-            </motion.form>
-          )}
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Footer */}
+          <div className="relative z-10 text-center mt-6 text-slate-400 text-sm">
+            Already have an account?{' '}
+            <button
+              onClick={onSwitchToLogin}
+              disabled={loading}
+              className="text-blue-400 hover:text-blue-300 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sign in
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>

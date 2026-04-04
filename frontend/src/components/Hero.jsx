@@ -1,118 +1,117 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ShieldCheck, Zap, Activity } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Zap, BarChart3, Clock } from 'lucide-react';
+import heroBg from '../assets/images/hero-bg.png';
+
+/* ── Trust badge ──────────────────────── */
+const TrustBadge = ({ icon: Icon, label }) => (
+  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-slate-200/50 text-slate-700 text-sm font-medium shadow-sm">
+    <Icon className="w-4 h-4 text-blue-600" />
+    <span>{label}</span>
+  </div>
+);
 
 const Hero = ({ onGetStarted }) => {
-  return (
-    <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-      {/* Dynamic Backgrounds */}
-      <div className="absolute inset-0 bg-[#f8fafc] -z-20" />
-      <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-[800px] h-[800px] bg-gradient-to-br from-blue-400/30 to-indigo-500/30 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[600px] h-[600px] bg-gradient-to-tr from-cyan-400/30 to-teal-500/30 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDuration: '10s' }} />
+  const container = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.12 } }
+  };
+  const item = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] } } };
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-blue-100 backdrop-blur-sm mb-8 shadow-sm"
-          >
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-ping absolute"></span>
-            <span className="flex h-2 w-2 rounded-full bg-green-500 relative"></span>
-            <span className="text-sm font-semibold text-slate-700 ml-2">Smart Risk API v1.0 Live</span>
+  return (
+    <section className="relative min-h-[90vh] flex items-center pt-20 pb-20 overflow-hidden bg-slate-50">
+      {/* Background Image Container */}
+      <div className="absolute inset-0 z-0">
+        <div 
+          className="absolute inset-0 bg-no-repeat bg-cover bg-center lg:bg-right"
+          style={{ backgroundImage: `url(${heroBg})` }}
+        />
+        {/* Gradients to ensure text readability on the left */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent sm:w-2/3 md:w-1/2 lg:w-[55%] z-0" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-50 to-transparent z-0" />
+      </div>
+
+      <motion.div
+        className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
+        {/* Left Content Area (Text) */}
+        <div className="w-full lg:w-[55%] pt-10 lg:pt-0 pb-10">
+          
+          {/* Live badge */}
+          <motion.div variants={item} className="flex justify-start mb-6">
+            <div className="relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              <span className="text-sm font-bold text-blue-700 tracking-wide uppercase">AI Risk Engine Live</span>
+            </div>
           </motion.div>
 
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight"
+          {/* Main heading */}
+          <motion.h1
+            variants={item}
+            className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.1] tracking-tight mb-6"
           >
-            Protecting Every Delivery, <br className="hidden md:block" />
+            Income Protection
+            <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              Securing Every Earning.
+              When You Need It Most
             </span>
           </motion.h1>
 
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-6 text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed font-medium"
+          {/* Subtitle */}
+          <motion.p
+            variants={item}
+            className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed max-w-xl"
           >
-            An AI-powered parametric insurance platform built specifically for the modern gig economy. Automated claims, real-time risk API, and instant payouts.
+            Smart parametric insurance for gig workers. <strong className="text-slate-800 font-semibold">Zero paperwork.</strong> Instant payouts triggered automatically by severe weather, high AQI, or platform disruptions.
           </motion.p>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <button 
+          {/* Trust badges */}
+          <motion.div variants={item} className="flex flex-wrap items-center gap-3 mb-10 max-w-md">
+            <TrustBadge icon={Zap} label="Instant Claims" />
+            <TrustBadge icon={ShieldCheck} label="Zero Paperwork" />
+            <TrustBadge icon={BarChart3} label="Data-Driven Triggers" />
+          </motion.div>
+
+          {/* CTA buttons */}
+          <motion.div variants={item} className="flex flex-col sm:flex-row items-center gap-4">
+            <motion.button
               onClick={onGetStarted}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-lg shadow-xl shadow-slate-900/20 transition-all hover:-translate-y-1"
+              whileHover={{ scale: 1.03, boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)' }}
+              whileTap={{ scale: 0.97 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all"
             >
-              Get Started <ArrowRight className="w-5 h-5" />
-            </button>
-            <button className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold text-lg shadow-sm transition-all hover:-translate-y-1">
-              Read API Docs
-            </button>
+              Get Protected Now <ArrowRight className="w-5 h-5" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-base text-slate-700 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+            >
+              See How It Works
+            </motion.button>
+          </motion.div>
+          
+          <motion.div variants={item} className="mt-8 flex items-center gap-4 text-sm font-medium text-slate-500">
+             <div className="flex -space-x-2">
+               <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/100?img=11" alt=""/>
+               <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/100?img=12" alt=""/>
+               <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/100?img=15" alt=""/>
+             </div>
+             <p>Trusted by <span className="text-slate-800 font-bold">10,000+</span> delivery partners</p>
           </motion.div>
         </div>
-
-        {/* Floating Abstract Dashboard Element */}
-        <motion.div
-           initial={{ opacity: 0, y: 40 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ duration: 0.8, delay: 0.5, type: "spring" }}
-           className="mt-20 mx-auto max-w-5xl relative"
-        >
-           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#f8fafc] z-10 top-1/2 rounded-b-3xl" />
-           <div className="bg-white/40 backdrop-blur-xl border border-white/50 shadow-2xl rounded-t-3xl p-4 sm:p-6 pb-0 overflow-hidden relative">
-              <div className="w-full h-12 flex flex-row items-center justify-start gap-2 px-4 border-b border-black/5 mb-4">
-                 <div className="w-3 h-3 rounded-full bg-red-400" />
-                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                 <div className="w-3 h-3 rounded-full bg-green-400" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-20">
-                 
-                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                       <Zap className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-slate-900 font-bold mb-1">Instant Parametric Trigger</h3>
-                    <p className="text-slate-500 text-sm">Automated payout system triggering when risk thresholds are met.</p>
-                 </div>
-                 
-                 <div className="bg-white rounded-2xl p-6 shadow-md shadow-blue-500/5 border-2 border-blue-50 relative -translate-y-4">
-                    <div className="absolute -top-3 -right-3">
-                       <span className="flex h-6 w-6">
-                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                         <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500 border-2 border-white"></span>
-                       </span>
-                    </div>
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
-                       <Activity className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-slate-900 font-bold mb-1">Real-time Risk AI</h3>
-                    <p className="text-slate-500 text-sm">Ingests dynamic rain, AQI, and external context via /api/risk</p>
-                 </div>
-
-                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
-                       <ShieldCheck className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-slate-900 font-bold mb-1">Smart Underwriting</h3>
-                    <p className="text-slate-500 text-sm">Gig-specific precision pricing powered by advanced ML models.</p>
-                 </div>
-
-              </div>
-           </div>
-        </motion.div>
-      </div>
-    </div>
+        
+        {/* Right Content Area (Image placeholder for small screens if needed, otherwise handled by background) */}
+        {/* In the desktop layout, the right side of the background image will naturally show here */}
+        <div className="hidden lg:block lg:w-[45%] h-full"></div>
+      </motion.div>
+    </section>
   );
 };
 

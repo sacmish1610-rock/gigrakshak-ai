@@ -8,29 +8,37 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
+    required: true,
+    unique: true,
     trim: true,
     lowercase: true
+  },
+  password: {
+    type: String,
+    required: true
   },
   phone: {
     type: String,
     trim: true
   },
-  location: {
+  pincode: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    minlength: 6,
+    maxlength: 6
   },
-  zone: {
+  city: {
     type: String,
     trim: true,
-    default: "General"
+    default: ""
   },
-  dailyIncome: {
-    type: Number,
-    required: true,
-    min: 0
+  state: {
+    type: String,
+    trim: true,
+    default: ""
   },
-  platform: {
+  workType: {
     type: String,
     required: true,
     enum: ["Zomato", "Swiggy", "Zepto", "Blinkit", "Amazon", "Flipkart", "Dunzo", "Uber Eats", "Other"]
@@ -40,18 +48,17 @@ const userSchema = new mongoose.Schema({
     enum: ["Bicycle", "Bike", "Scooter", "Auto", "Car", "On Foot", "Other"],
     default: "Bike"
   },
-  workingHours: {
-    type: Number,
-    default: 8,
-    min: 1,
-    max: 18
-  },
-  experienceMonths: {
+  experience: {
     type: Number,
     default: 0,
     min: 0
   },
-
+  income: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  
   // AI-computed fields
   riskScore: {
     type: Number,
